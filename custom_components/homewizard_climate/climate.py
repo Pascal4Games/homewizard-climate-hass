@@ -107,11 +107,18 @@ class HomeWizardClimateEntity(ClimateEntity):
     @property
     def fan_mode(self):
         """Return fan mode of the AC this group belongs to."""
-        if self._device_web_socket.last_state.fan_speed == 'low' or self._device_web_socket.last_state.speed == 1:
+        if self._isFAN:
+            if self._device_web_socket.last_state.speed == 1:
+                return FAN_LOW
+            if self._device_web_socket.last_state.speed == 2:
+                return FAN_MEDIUM
+            if self._device_web_socket.last_state.speed == 3:
+                return FAN_HIGH
+        if self._device_web_socket.last_state.fan_speed == 'low':
             return FAN_LOW
-        if self._device_web_socket.last_state.fan_speed == 'med' or self._device_web_socket.last_state.speed == 2:
+        if self._device_web_socket.last_state.fan_speed == 'med':
             return FAN_MEDIUM
-        if self._device_web_socket.last_state.fan_speed == 'high' or self._device_web_socket.last_state.speed == 3:
+        if self._device_web_socket.last_state.fan_speed == 'high':
             return FAN_HIGH
 
     @property
@@ -373,8 +380,11 @@ class HomeWizardClimateEntity(ClimateEntity):
     def set_swing_mode(self, swing_mode: str) -> None:
         """Set swing mode."""
         if self._isDEHUMID:
-            self._device_web_socket.set_swing(swing_mode)
-            return
+            if swing_mode == SWING_ON:
+                self._device_web_socket.set_swing('true')
+            else:
+                self._device_web_socket.set_swing('false')
+
         if swing_mode == SWING_HORIZONTAL:
             self._device_web_socket.turn_on_oscillation()
         else:
