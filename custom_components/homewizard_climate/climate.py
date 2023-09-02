@@ -26,7 +26,6 @@ from homeassistant.components.climate import (
     ClimateEntityFeature,
     PRESET_COMFORT,
     PRESET_SLEEP,
-    PRESET_ECO,
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
