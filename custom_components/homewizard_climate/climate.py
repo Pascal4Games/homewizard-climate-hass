@@ -29,7 +29,7 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -74,6 +74,9 @@ class HomeWizardClimateEntity(ClimateEntity):
             self._isDEHUMID = True
         if self._device_web_socket.device.type == HomeWizardClimateDeviceType.AIRCOOLER:
             self._isAIRCOOLER = True
+        
+        # see, https://developers.home-assistant.io/blog/2024/01/24/climate-climateentityfeatures-expanded
+        self._enable_turn_on_off_backwards_compatibility = False
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -96,11 +99,15 @@ class HomeWizardClimateEntity(ClimateEntity):
     @property
     def current_temperature(self) -> int:
         """Return the current temperature."""
+        if self._isAIRCOOLER or self._isFAN:
+            return None
         return self._device_web_socket.last_state.current_temperature
 
     @property
     def current_humidity(self) -> int:
         """Return the current temperature."""
+        if self._isAIRCOOLER or self._isFAN:
+            return None
         return self._device_web_socket.last_state.current_humidity
 
     @property
@@ -161,27 +168,37 @@ class HomeWizardClimateEntity(ClimateEntity):
                 | ClimateEntityFeature.PRESET_MODE
                 | ClimateEntityFeature.FAN_MODE
                 | ClimateEntityFeature.SWING_MODE
+                | ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
             )
         if self._isIR:
             return (
                 ClimateEntityFeature.TARGET_TEMPERATURE
+                | ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
             )
         if self._isHEATER:
             return (
                 ClimateEntityFeature.TARGET_TEMPERATURE
                 | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
             )
         if self._isFAN or self._isAIRCOOLER:
             return (
                 ClimateEntityFeature.FAN_MODE
                 | ClimateEntityFeature.SWING_MODE
                 | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
             )
         """Return the list of supported features."""
         return (
             ClimateEntityFeature.TARGET_TEMPERATURE
             | ClimateEntityFeature.FAN_MODE
             | ClimateEntityFeature.SWING_MODE
+            | ClimateEntityFeature.TURN_OFF
+            | ClimateEntityFeature.TURN_ON
         )
 
     @property
@@ -226,6 +243,9 @@ class HomeWizardClimateEntity(ClimateEntity):
                     return HVACMode.COOL
                 return HVACMode.FAN_ONLY
             return HVACMode.OFF
+        if self._isFAN or self._isDEHUMID:
+            if self._device_web_socket.last_state.power_on:
+                return HVACMode.FAN_ONLY
         """Return hvac target hvac state."""
         if self._device_web_socket.last_state.power_on:
             result = (
@@ -243,7 +263,7 @@ class HomeWizardClimateEntity(ClimateEntity):
         if self._isIR or self._isHEATER:
             return [HVACMode.HEAT, HVACMode.OFF]
         if self._isFAN or self._isDEHUMID:
-            return [HVACMode.COOL, HVACMode.OFF]
+            return [HVACMode.FAN_ONLY, HVACMode.OFF]
         if self._isAIRCOOLER:
             return [HVACMode.COOL, HVACMode.FAN_ONLY, HVACMode.OFF]
         """Return the list of available operation modes."""
@@ -252,7 +272,7 @@ class HomeWizardClimateEntity(ClimateEntity):
     @property
     def temperature_unit(self):
         """Return the current temperature unit."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def target_temperature_step(self) -> float:
