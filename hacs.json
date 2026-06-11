@@ -1,0 +1,5 @@
+{
+  "name": "Homewizard Climate",
+  "domains": ["climate", "fan", "humidifier", "sensor", "switch"],
+  "content_in_root": false
+}
