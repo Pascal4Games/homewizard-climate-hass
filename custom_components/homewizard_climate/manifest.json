@@ -3,7 +3,7 @@
   "name": "Homewizard Climate",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/homewizard_climate",
-  "requirements": ["homewizard-climate-ws==0.0.27"],
+  "requirements": ["git+https://github.com/Pascal4Games/homewizard-climate-websocket#forked"],
   "codeowners": ["@mepla", "@dennis1804"],
   "version": "1.0.8",
   "iot_class": "cloud_push"

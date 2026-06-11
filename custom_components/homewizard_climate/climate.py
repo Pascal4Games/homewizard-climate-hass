@@ -1,5 +1,6 @@
 """Climate platform for homewizard_climate."""
 import logging
+from typing import Any
 import time
 
 from homewizard_climate_ws.model.climate_device_state import (
@@ -36,13 +37,22 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create entries for each device in Homewizard cloud."""
+    """Create entries for each device in Homewizard cloud, behalve FANs."""
     websockets = hass.data[DOMAIN][entry.entry_id]["websockets"]
-    entities = [HomeWizardClimateEntity(ws, hass) for ws in websockets]
+
+    # Filter FAN en DEHUMIDIFIER eruit (die hebben eigen platform)
+    climate_websockets = [
+        ws for ws in websockets
+        if ws.device.type not in (
+            HomeWizardClimateDeviceType.FAN,
+            HomeWizardClimateDeviceType.DEHUMIDIFIER,
+        )
+    ]
+
+    entities = [HomeWizardClimateEntity(ws, hass) for ws in climate_websockets]
     async_add_entities(entities)
 
 
@@ -56,6 +66,7 @@ class HomeWizardClimateEntity(ClimateEntity):
         self._device_web_socket = device_web_socket
         self._device_web_socket.set_on_state_change(self.on_device_state_change)
         self._hass = hass
+        self._hass.custom_attributes = {}
         self._isIR = False
         self._isFAN = False
         self._isHEATER = False
@@ -66,8 +77,8 @@ class HomeWizardClimateEntity(ClimateEntity):
         )
         if self._device_web_socket.device.type == HomeWizardClimateDeviceType.INFRAREDHEATER:
             self._isIR = True
-        if self._device_web_socket.device.type == HomeWizardClimateDeviceType.FAN:
-            self._isFAN = True
+#        if self._device_web_socket.device.type == HomeWizardClimateDeviceType.FAN:
+#            self._isFAN = True
         if self._device_web_socket.device.type == HomeWizardClimateDeviceType.HEATER:
             self._isHEATER = True
         if self._device_web_socket.device.type == HomeWizardClimateDeviceType.DEHUMIDIFIER:
@@ -75,7 +86,6 @@ class HomeWizardClimateEntity(ClimateEntity):
         if self._device_web_socket.device.type == HomeWizardClimateDeviceType.AIRCOOLER:
             self._isAIRCOOLER = True
         
-        # see, https://developers.home-assistant.io/blog/2024/01/24/climate-climateentityfeatures-expanded
         self._enable_turn_on_off_backwards_compatibility = False
 
     @property
@@ -329,6 +339,20 @@ class HomeWizardClimateEntity(ClimateEntity):
             int(kwargs.get(ATTR_TEMPERATURE, "0"))
         )
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return active error codes, or 'Geen fout'."""
+        if self._device_web_socket.device.type == HomeWizardClimateDeviceType.AIRCOOLER:
+            warning = self._device_web_socket.last_state.warning
+            return {
+                "fout_status": warning.strip("[]'\"").replace("_", " ").title() if warning else "Geen fout"
+            }
+        else:
+            fault = self._device_web_socket.last_state.fault
+            return {
+                "fout_status": fault.strip("[]'\"").replace("_", " ").title() if fault else "Geen fout"
+            }
+
     def set_fan_mode(self, fan_mode: str) -> None:
         if self._isIR or self._isHEATER:
             raise NotImplementedError()
@@ -438,13 +462,14 @@ class HomeWizardClimateEntity(ClimateEntity):
         """Not implemented."""
         raise NotImplementedError()
 
-    # def set_humidity(self, humidity: int) -> None:
-    #     """Not implemented."""
-    #     raise NotImplementedError()
+    def _dispatch(self, state: HomeWizardClimateDeviceState, diff: str) -> None:
+        """Call all registered callbacks."""
+        for callback in self._callbacks:
+            callback(state, diff)
 
     def on_device_state_change(
         self, state: HomeWizardClimateDeviceState, diff: str
     ) -> None:
         """Get called when any update is pushed through the websocket server andupdates HA state."""
-        self._logger.debug("State updated, diff: %s", diff)
-        self._hass.add_job(self.async_write_ha_state)
+        self._logger.debug("on_device_state_change aangeroepen: %s", diff)
+        self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
