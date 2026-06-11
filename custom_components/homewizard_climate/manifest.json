@@ -4,7 +4,7 @@
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/homewizard_climate",
   "requirements": ["git+https://github.com/Pascal4Games/homewizard-climate-websocket#forked"],
-  "codeowners": ["@mepla", "@dennis1804"],
+  "codeowners": ["@mepla", "@dennis1804", "@Pascal4Games"],
   "version": "1.0.9",
   "iot_class": "cloud_push"
 }
