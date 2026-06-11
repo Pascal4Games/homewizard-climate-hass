@@ -3,7 +3,8 @@
 ## installation
 you can add this repo to your homeassistant by installing HACS and choosing integrations, install a custom repository and paste this url.
 
-![image](https://user-images.githubusercontent.com/15904064/216421839-c1feff4c-36c4-4e8c-9df4-9b4eb7c52a5d.png)
+<img width="412" height="163" alt="afbeelding" src="https://github.com/user-attachments/assets/7822115c-aed4-404b-bf9a-6f5f830661c6" />
+
 
 after that you can add the integration to Homeassistant and input your username and password.
 
